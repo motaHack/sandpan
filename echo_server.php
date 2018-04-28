@@ -4,16 +4,7 @@ require_once 'server.php';
 
 $server = new TestTCPServer();
 $server->run(function($remote, $sock) {
-  $body = "<html>".
-  "<head>".
-    "<title>".
-      "タイトル".
-    "</title>".
-  "</head>".
-    "<body>".
-      "hello world".
-    "</body>".
-  "</html>";
+  $body = file_get_contents('html/index.html');
   $header = "HTTP/1.1 200 OK\r\n".
     "Content-Type: text/html; charset=UTF-8\r\n".
     "Content-Length: ".strlen($body)."\r\n".

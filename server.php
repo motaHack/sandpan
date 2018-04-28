@@ -33,13 +33,12 @@ class TestTCPServer
 
     public function run(Closure $code)
     {
-        echo ">>start";
         while ($remote = socket_accept($this->sock)) {
             while ($line = socket_read($remote, 1024)) {
+                echo $remote;
                 $code($remote, $this->sock);
                 break;
             }
-            echo "<<end";
         }
     }
 }
