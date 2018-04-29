@@ -33,29 +33,53 @@ class TCPServer
 
     public function run()
     {
-        while ($remote = socket_accept($this->sock)) {
-            while ($line = socket_read($remote, 1024)) {
-                $path = $this->get_request_path($line);
-                $body = $this->get($path);
-                $header = $this->create_header($path, $body);
-                $msg = $header . "\r\n" . $body . "\r\n";
-                socket_write($remote, $msg);
-                socket_close($remote);
-                break;
-            }
+      while ($remote = socket_accept($this->sock)) {
+        while ($line = socket_read($remote, 1024)) {
+          $method = $this->check_method($line);
+          $response = '';
+          if ($method == 'GET') {
+            $response = $this->get($line);
+          } elseif($method == 'HEAD') {
+            $response = $this->head($line);
+          }
+          socket_write($remote, $response);
+          socket_close($remote);
+          break;
         }
+      }
     }
 
-    function get($path)
+    function check_method($line)
     {
+      preg_match('/^.+\sHTTP\//',$line,$matches,PREG_OFFSET_CAPTURE);
+      if (preg_match('/GET/',$matches[0][0]) == 1) {
+        return 'GET';
+      } else {
+        return 'HEAD';
+      }
+    }
+
+    function get($line)
+    {
+      $path = $this->get_request_path($line);
       $body = file_get_contents($path);
-      return $body;
+      $header = $this->create_header($path,$body);
+      $response = $header . $body . "\r\n";
+      return $response;
+    }
+
+    function head($line)
+    {
+      $path = $this->get_request_path($line);
+      $body = file_get_contents($path);
+      $header = $this->create_header($path, $body);
+      return $header;
     }
 
     function get_request_path($line)
     {
       $root_dir = './contents';
-      preg_match('/^GET.+\sHTTP\/.*/',$line,$matches,PREG_OFFSET_CAPTURE);
+      preg_match('/^.+\sHTTP\/.*/',$line,$matches,PREG_OFFSET_CAPTURE);
       $head_line = $matches[0][0];
       $paths = preg_split('/\s/',$head_line);
       $path = $root_dir.$paths[1];
@@ -70,7 +94,7 @@ class TCPServer
       "HTTP/1.0 ".$status_code."\r\n".
       "Content-Type: ".$content_type."; charset=UTF-8\r\n".
       "Content-Length: ".strlen($body)."\r\n".
-      "Connection: Close\r\n";
+      "Connection: Close\r\n\r\n";
       return $header;
     }
 
@@ -93,5 +117,4 @@ class TCPServer
       }
       return 'text/html';
     }
-
 }
