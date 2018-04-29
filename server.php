@@ -41,6 +41,8 @@ class TCPServer
             $response = $this->get($line);
           } elseif($method == 'HEAD') {
             $response = $this->head($line);
+          } else {
+            $response = $this->method_not_allowed();
           }
           socket_write($remote, $response);
           socket_close($remote);
@@ -54,8 +56,10 @@ class TCPServer
       preg_match('/^.+\sHTTP\//',$line,$matches,PREG_OFFSET_CAPTURE);
       if (preg_match('/GET/',$matches[0][0]) == 1) {
         return 'GET';
-      } else {
+      } elseif (preg_match('/HEAD/',$matches[0][0]) == 1) {
         return 'HEAD';
+      } else {
+        return '405';
       }
     }
 
@@ -70,7 +74,6 @@ class TCPServer
         $status = 404;
       }
       $header = $this->create_header($path,$body,$status);
-
       $response = $header . $body . "\r\n";
       return $response;
     }
@@ -78,8 +81,22 @@ class TCPServer
     function head($line)
     {
       $path = $this->get_request_path($line);
-      $body = file_get_contents($path);
-      $header = $this->create_header($path, $body);
+      $status = 200;
+      try {
+        $body = $this->get_contents($path);
+      } catch(Exception $e) {
+        $status = 404;
+      }
+      $header = $this->create_header($path, $body, $status);
+      return $header;
+    }
+
+    function method_not_allowed()
+    {
+      $status = 405;
+      $body = "";
+      $path = "";
+      $header = $this->create_header($path, $body, $status);
       return $header;
     }
 
@@ -109,6 +126,7 @@ class TCPServer
       $content_type = $this->check_content_type($path);
       $status_code = $this->create_status_code($status);
       $content_length = $this->create_content_length($body);
+
       $header =
       "HTTP/1.0 ".$status_code."\r\n".
       "Content-Type: ".$content_type."; charset=UTF-8\r\n".
@@ -122,6 +140,8 @@ class TCPServer
       if ($status == 404)
       {
         return '404 Not Found';
+      } elseif ($status == 405) {
+        return '405 Method Not Allowed';
       }
       return '200 OK';
     }
