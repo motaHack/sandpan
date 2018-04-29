@@ -31,14 +31,39 @@ class TestTCPServer
         return $sock;
     }
 
-    public function run(Closure $code)
+    public function run()
     {
         while ($remote = socket_accept($this->sock)) {
             while ($line = socket_read($remote, 1024)) {
-                echo $remote;
-                $code($remote, $this->sock);
+                // $code($remote, $line,$this->sock);
+                $body = $this->get($line);
+                $header = "HTTP/1.0 200 OK\r\n".
+                "Content-Type: text/html; charset=UTF-8\r\n".
+                "Content-Length: ".strlen($body)."\r\n".
+                "Connection: Close\r\n";
+                $msg = $header . "\r\n" . $body . "\r\n";
+                socket_write($remote, $msg);
+                socket_close($remote);
                 break;
             }
         }
     }
+
+    function get($line)
+    {
+      $path = $this->getRequestPath($line);
+      $body = file_get_contents($path);
+      return $body;
+    }
+
+    function getRequestPath($line)
+    {
+      $root_dir = './';
+      preg_match('/^GET.+\sHTTP\/.*/',$line,$matches,PREG_OFFSET_CAPTURE);
+      $head_line = $matches[0][0];
+      $paths = preg_split('/\s/',$head_line);
+      $path = $paths[1];
+      return $root_dir.$path;
+    }
+
 }
