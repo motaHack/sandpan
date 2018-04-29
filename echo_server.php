@@ -2,5 +2,5 @@
 
 require_once 'server.php';
 
-$server = new TestTCPServer();
+$server = new TCPServer();
 $server->run();
