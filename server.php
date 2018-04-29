@@ -1,6 +1,6 @@
 <?php
 
-class TestTCPServer
+class TCPServer
 {
     public $sock = NULL;
 
@@ -35,12 +35,9 @@ class TestTCPServer
     {
         while ($remote = socket_accept($this->sock)) {
             while ($line = socket_read($remote, 1024)) {
-                // $code($remote, $line,$this->sock);
-                $body = $this->get($line);
-                $header = "HTTP/1.0 200 OK\r\n".
-                "Content-Type: text/html; charset=UTF-8\r\n".
-                "Content-Length: ".strlen($body)."\r\n".
-                "Connection: Close\r\n";
+                $path = $this->get_request_path($line);
+                $body = $this->get($path);
+                $header = $this->create_header($path, $body);
                 $msg = $header . "\r\n" . $body . "\r\n";
                 socket_write($remote, $msg);
                 socket_close($remote);
@@ -49,21 +46,52 @@ class TestTCPServer
         }
     }
 
-    function get($line)
+    function get($path)
     {
-      $path = $this->getRequestPath($line);
       $body = file_get_contents($path);
       return $body;
     }
 
-    function getRequestPath($line)
+    function get_request_path($line)
     {
-      $root_dir = './';
+      $root_dir = './contents';
       preg_match('/^GET.+\sHTTP\/.*/',$line,$matches,PREG_OFFSET_CAPTURE);
       $head_line = $matches[0][0];
       $paths = preg_split('/\s/',$head_line);
-      $path = $paths[1];
-      return $root_dir.$path;
+      $path = $root_dir.$paths[1];
+      return $path;
+    }
+
+    function create_header($path, $body)
+    {
+      $content_type = $this->check_content_type($path);
+      $status_code = $this->create_status_code();
+      $header =
+      "HTTP/1.0 ".$status_code."\r\n".
+      "Content-Type: ".$content_type."; charset=UTF-8\r\n".
+      "Content-Length: ".strlen($body)."\r\n".
+      "Connection: Close\r\n";
+      return $header;
+    }
+
+    function create_status_code ()
+    {
+      return '200 OK';
+    }
+
+    function check_content_type ($path)
+    {
+      $extension = end(explode(".",$path,3));
+      if ($extension == 'html') {
+        return 'text/html';
+      } elseif ($extension == 'css') {
+        return 'text/css';
+      } elseif ($extension == 'js') {
+        return 'text/javascript';
+      } elseif (preg_match('/gif|jpeg|jpg|png|bmp/',$extension) == 1) {
+        return 'image/'.$extension;
+      }
+      return 'text/html';
     }
 
 }
