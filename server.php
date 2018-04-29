@@ -90,10 +90,11 @@ class TCPServer
     {
       $content_type = $this->check_content_type($path);
       $status_code = $this->create_status_code();
+      $content_length = $this->create_content_length($body);
       $header =
       "HTTP/1.0 ".$status_code."\r\n".
       "Content-Type: ".$content_type."; charset=UTF-8\r\n".
-      "Content-Length: ".strlen($body)."\r\n".
+      "Content-Length: ".$content_length."\r\n".
       "Connection: Close\r\n\r\n";
       return $header;
     }
@@ -101,6 +102,11 @@ class TCPServer
     function create_status_code ()
     {
       return '200 OK';
+    }
+
+    function create_content_length($body)
+    {
+      return strlen($body);
     }
 
     function check_content_type ($path)
