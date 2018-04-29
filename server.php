@@ -61,9 +61,16 @@ class TCPServer
 
     function get($line)
     {
+      $body = "";
+      $status = 200;
       $path = $this->get_request_path($line);
-      $body = file_get_contents($path);
-      $header = $this->create_header($path,$body);
+      try {
+        $body = $this->get_contents($path);
+      } catch(Exception $e) {
+        $status = 404;
+      }
+      $header = $this->create_header($path,$body,$status);
+
       $response = $header . $body . "\r\n";
       return $response;
     }
@@ -86,10 +93,21 @@ class TCPServer
       return $path;
     }
 
-    function create_header($path, $body)
+    function get_contents($path) {
+      ob_start();
+      $contents = file_get_contents($path);
+      $waring = ob_get_contents();
+      ob_end_clean();
+      if ($waring) {
+        throw new Exception('404');
+      }
+      return $contents;
+    }
+
+    function create_header($path, $body, $status)
     {
       $content_type = $this->check_content_type($path);
-      $status_code = $this->create_status_code();
+      $status_code = $this->create_status_code($status);
       $content_length = $this->create_content_length($body);
       $header =
       "HTTP/1.0 ".$status_code."\r\n".
@@ -99,8 +117,12 @@ class TCPServer
       return $header;
     }
 
-    function create_status_code ()
+    function create_status_code ($status)
     {
+      if ($status == 404)
+      {
+        return '404 Not Found';
+      }
       return '200 OK';
     }
 
